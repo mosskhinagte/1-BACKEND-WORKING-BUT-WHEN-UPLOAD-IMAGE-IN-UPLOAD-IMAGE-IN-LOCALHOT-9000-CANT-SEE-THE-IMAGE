@@ -3,8 +3,8 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import GridFsStorage from 'multer-gridfs-storage';
 import Grid from 'gridfs-stream';
-import path, { resolve } from 'path';
-import Pursher from 'pusher';
+import path from 'path';
+import Pusher from 'pusher';
 import bodyParser from 'body-parser';
 import multer from 'multer';
 
@@ -25,6 +25,18 @@ const port = process.env.PORT || 9000
 
 
 
+//this key coply form pusher.com
+
+const pusher = new Pusher({
+    appId: "1172767",
+    key: "4096e93b708dd136d79a",
+    secret: "358c33e9bf159af74a67",
+    cluster: "ap2",
+    useTLS: true
+});
+
+
+
 //Middleware
 app.use(bodyParser.json());
 app.use(cors());
@@ -39,6 +51,30 @@ const conn = mongoose.createConnection(mongoURI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });
+
+mongoose.connection.once('open', () => {
+    console.log('DB Connected')
+
+    const changeStream = mongoose.connection.collection('posts').watch()
+
+    changeStream.on('change', (change) => {
+        console.log(change)
+
+        if (change.operationType === 'insert') {
+            console.log('Tringgering Pusher')
+
+            pusher.tringger('posts', 'inserted', {
+                change: change
+            })
+        } else {
+            console.log('Enter trigger Pusher')
+        }
+    })
+})
+
+
+
+
 
 let gfs
 
